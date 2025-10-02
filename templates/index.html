@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔬 Image Retrieval System - Tra cứu Ảnh Thông Minh</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+            color: #333;
+        }
+        .container { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px); 
+            border-radius: 20px; 
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1); 
+            padding: 40px; 
+            max-width: 600px; 
+            width: 100%; 
+            text-align: center; 
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        h1 { 
+            color: #4a5568; 
+            margin-bottom: 10px; 
+            font-weight: 700; 
+            font-size: 2em; 
+        }
+        .subtitle { color: #718096; margin-bottom: 30px; font-weight: 300; }
+        .form-section { 
+            background: #f8f9ff; 
+            border-radius: 15px; 
+            padding: 20px; 
+            margin: 20px 0; 
+            border-left: 4px solid #4299e1; 
+            transition: transform 0.3s ease;
+        }
+        .form-section:hover { transform: translateX(5px); }
+        .form-section h3 { 
+            color: #2d3748; 
+            margin-bottom: 15px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px;
+        }
+        input[type="text"], input[type="file"] { 
+            width: 100%; 
+            padding: 15px; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            transition: border-color 0.3s ease; 
+            margin-bottom: 10px;
+        }
+        input:focus { border-color: #4299e1; outline: none; box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1); }
+        button { 
+            background: linear-gradient(135deg, #4299e1, #3182ce); 
+            color: white; 
+            padding: 15px 30px; 
+            border: none; 
+            border-radius: 10px; 
+            font-size: 18px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            width: 100%; 
+            transition: all 0.3s ease; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 10px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3); }
+        button:disabled { background: #a0aec0; cursor: not-allowed; transform: none; }
+        .loading { display: none; text-align: center; margin: 20px 0; }
+        .spinner { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #4299e1; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error { 
+            background: #fed7d7; 
+            color: #c53030; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
+            border-left: 4px solid #e53e3e;
+        }
+        .note { 
+            background: #c6f6d5; 
+            color: #22543d; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-top: 20px; 
+            font-size: 14px; 
+            border-left: 4px solid #38a169;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-search"></i> Image Retrieval System</h1>
+        <p class="subtitle">Tra cứu ảnh thông minh dựa trên đặc trưng và metadata từ Unsplash/Local</p>
+        
+        {% if error %}
+            <div class="error">
+                <i class="fas fa-exclamation-triangle"></i> {{ error }}
+            </div>
+        {% endif %}
+        
+        <form id="searchForm" method="POST" enctype="multipart/form-data">
+            <div class="form-section">
+                <h3><i class="fas fa-keyboard"></i> Từ khóa tra cứu</h3>
+                <input type="text" name="keyword" placeholder="Ví dụ: nature, city, mountain..." required>
+            </div>
+            
+            <div class="form-section">
+                <h3><i class="fas fa-upload"></i> Upload ảnh query (tùy chọn)</h3>
+                <input type="file" name="file" accept="image/*">
+                <small style="color: #718096;">Upload ảnh để tìm các ảnh tương tự dựa trên đặc trưng AI (ResNet18 + FAISS)</small>
+            </div>
+            
+            <button type="submit">
+                <i class="fas fa-magnifying-glass"></i> Bắt đầu Tra cứu
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Đang tải và phân tích ảnh... Vui lòng chờ!</p>
+        </div>
+        
+        <div class="note">
+            <i class="fas fa-info-circle"></i> 
+            Thêm ảnh vào thư mục <code>images/</code> để test local nếu chưa có API key Unsplash.
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', function() {
+            const button = this.querySelector('button');
+            const loading = document.getElementById('loading');
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            loading.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

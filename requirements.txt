@@ -1,0 +1,8 @@
+flask
+torch
+torchvision
+faiss-cpu
+pillow
+matplotlib
+requests
+numpy
